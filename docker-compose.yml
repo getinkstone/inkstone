@@ -1,0 +1,12 @@
+version: '3.7'
+
+services:
+    build_apk:
+        image: inkstone/inkstone_build_env
+        build:
+            context: .
+            cache_from:
+                - inkstone/inkstone_build_env
+        volumes:
+           - .:/project
+        entrypoint: /project/scripts/build

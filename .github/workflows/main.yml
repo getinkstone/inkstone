@@ -1,0 +1,14 @@
+name: inkstone
+
+on:
+  - push
+  - pull_request
+
+
+jobs:
+  maybe_update_meetup:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: run docker-compose
+      run: docker-compose up
