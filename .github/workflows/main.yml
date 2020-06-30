@@ -10,5 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-    - name: run docker-compose
+    - name: try to pull the image
+      run: docker-compose pull || true
+    - name: build using docker-compose
       run: docker-compose up
