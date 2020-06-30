@@ -6,7 +6,8 @@ on:
 
 
 jobs:
-  maybe_update_meetup:
+  build_apk:
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
