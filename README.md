@@ -6,6 +6,7 @@ The app version that you're on is displayed on the main page below the
 "Inkstone" title. If you don't see it there, you're at version 0.0.4
 or earlier.
 
+- Version 0.1.5 displays number of unseen cards in the top bar.
 - Version 0.1.4 introduces "stroke-capped" character data, which is visually
   appealing and better for learning.
   [See here for more details about this change.](https://github.com/skishore/makemeahanzi/pull/32)
