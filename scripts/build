@@ -1,33 +1,32 @@
 #!/bin/bash
 
-DIRECTORY="/Users/skishore/Dropbox/Projects/inkstone"
-ZIPALIGN="/Users/skishore/Library/Android/sdk/build-tools/23.0.1/zipalign"
+set -euo pipefail  # "bash script mode"
+
+ZIPALIGN="zipalign"
 
 # Clear the build directory.
-rm -r .build
-meteor remove-platform android
+rm -r .build || true
+meteor remove-platform android || true
 meteor add-platform android
 
 # Run the Meteor build script. Since Meteor copies the cordova-build-override
 # directory, we manually exclude the saved character data files in our build.
-mv cordova-build-override/www/assets/characters .characters
+mv cordova-build-override/www/assets/characters .characters || true
 meteor build .build --server localhost:3785
 cp -R cordova-build-override/* .build/android/project/assets/.
-mv .characters cordova-build-override/www/assets/characters
+mv .characters cordova-build-override/www/assets/characters || true
 
 # Run the Cordova build script.
 pushd .build/android/project/cordova
 ./build --release
 cd ../build/outputs/apk
 
+# keytool -genkey -alias inkstone -keystore ~/.keystore -keyalg RSA -keysize 2048 -validity 10000
+
 # Sign the output, using our private ~/.keystore and ~/.keystore_password.
 PASSWORD=`cat ~/.keystore_password`
 jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore ~/.keystore -storepass "$PASSWORD" project-armv7-release-unsigned.apk inkstone
 jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore ~/.keystore -storepass "$PASSWORD" project-x86-release-unsigned.apk inkstone
+
 $ZIPALIGN -f 4 project-armv7-release-unsigned.apk project-armv7-release.apk
 $ZIPALIGN -f 4 project-x86-release-unsigned.apk project-x86-release.apk
-
-# Copy the output to a staging location in Dropbox.
-cp project-armv7-release.apk $DIRECTORY/inkstone-armv7.new.apk
-cp project-x86-release.apk $DIRECTORY/inkstone-x86.new.apk
-popd
