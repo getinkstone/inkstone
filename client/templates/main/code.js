@@ -58,7 +58,11 @@ Template.layout.helpers({
       left += ' + ' + (x ? x.failures : '?');
     }
     if (Vocabulary.getNewItems().count() !== 0) {
-        left += ' (' + Vocabulary.getNewItems().count() + ' unseen)';
+      const ts = Date.timestamp();
+      left += ' (';
+      left += Vocabulary.getItemsDueBy(ts, ts).count() + ' total, ';
+      left += Vocabulary.getNewItems().count() + ' unseen'
+      left += ')';
     }
     return left;
   },
