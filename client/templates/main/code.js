@@ -19,6 +19,7 @@
 
 import {Settings} from '/client/model/settings';
 import {Timing} from '/client/model/timing';
+import {Vocabulary} from '/client/model/vocabulary';
 
 // Set up the routing table and transitioner.
 
@@ -55,6 +56,13 @@ Template.layout.helpers({
     let left = '' + (x ? x.adds + x.extras + x.reviews : '?');
     if (Settings.get('revisit_failures')) {
       left += ' + ' + (x ? x.failures : '?');
+    }
+    if (Vocabulary.getNewItems().count() !== 0) {
+      const ts = Date.timestamp();
+      left += ' (';
+      left += Vocabulary.getItemsDueBy(ts, ts).count() + ' total, ';
+      left += Vocabulary.getNewItems().count() + ' unseen'
+      left += ')';
     }
     return left;
   },
