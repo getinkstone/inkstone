@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:18.04
 
 # This is not essential for building Inkstone, but greatly simplifies the process
 # by providing you with an automatically-created, ready-to-use Android SDK environment.
@@ -15,12 +15,15 @@ FROM ubuntu:20.04
 # Assumes your UID is 1000, which is default on Ubuntu.
 
 RUN apt-get update && apt-get install -qqqy curl && curl -sL https://deb.nodesource.com/setup_14.x | bash -
-RUN apt-get update && apt-get install -qqqy openjdk-8-jdk wget unzip nodejs
+RUN apt-get update && apt-get install -qqqy openjdk-8-jdk wget gradle unzip nodejs
 
 RUN useradd -m -d /home/ubuntu -s /bin/bash -u 1000 user
 RUN mkdir /project && chown 1000:1000 /project
 USER user
 WORKDIR /home/ubuntu
+
+ENV ORG_GRADLE_PROJECT_cdvMinSdkVersion=21
+
 
 # This was copied from: https://hub.docker.com/r/chibatching/docker-android-sdk/dockerfile
 # <COPY>
@@ -31,7 +34,7 @@ RUN mkdir tools && wget -nv https://dl.google.com/android/repository/sdk-tools-l
 ENV ANDROID_HOME /home/ubuntu/tools
 ENV PATH ${ANDROID_HOME}/tools:$ANDROID_HOME/platform-tools:$PATH:${ANDROID_HOME}/tools/bin
 
-RUN mkdir $ANDROID_HOME/licenses && \
+RUN mkdir -pv $ANDROID_HOME/licenses && \
     echo 8933bad161af4178b1185d1a37fbf41ea5269c55 > $ANDROID_HOME/licenses/android-sdk-license && \
     echo d56f5187479451eabf01fb78af6dfcb131a6481e >> $ANDROID_HOME/licenses/android-sdk-license && \
     echo 24333f8a63b6825ea9c5514f83c2829b004d1fee >> $ANDROID_HOME/licenses/android-sdk-license && \
@@ -66,8 +69,8 @@ RUN cd $ANDROID_HOME && \
     rm tools_${TOOLS_VERSION}-linux.zip && \
     chown 1000:1000 tools -R
 
-# This solves the following: https://issuetracker.google.com/issues/116182838
-RUN sed -e 's/init>/init\&gt;/g' -i $ANDROID_HOME/platform-tools/api/api-versions.xml && rm $ANDROID_HOME/platform-tools/api/annotations.zip
+## This solves the following: https://issuetracker.google.com/issues/116182838
+#RUN sed -e 's/init>/init\&gt;/g' -i $ANDROID_HOME/platform-tools/api/api-versions.xml && rm $ANDROID_HOME/platform-tools/api/annotations.zip || true
 
 # Install Meteor as root, so that it's in $PATH
 USER root

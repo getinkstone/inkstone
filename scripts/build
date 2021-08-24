@@ -1,6 +1,8 @@
 #!/bin/bash
 
-set -euo pipefail  # "bash script mode"
+set -xeuo pipefail  # "bash script mode"
+
+meteor update --all-packages
 
 ZIPALIGN="zipalign"
 
