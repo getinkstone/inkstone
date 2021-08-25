@@ -1,46 +1,14 @@
-FROM ubuntu:20.04
+FROM thyrlian/android-sdk:6.1
 
-# This is not essential for building Inkstone, but greatly simplifies the process
-# by providing you with an automatically-created, ready-to-use Android SDK environment.
-# 
-# You can try it out by running the following:
-# 
-# ```
-# docker build . -t skishore/inkstone-build
-# docker run --entrypoint=/project/scripts/build -v `pwd`:/project -ti skishore/inkstone-build
-# ```
-# 
-# So far signing doesn't work, but you can confirm that the apk keys should appear in your home directory.
-#
-# Assumes your UID is 1000, which is default on Ubuntu.
+ENV DEBIAN_FRONTEND=noninteractive
+ENV CORDOVA_ANDROID_GRADLE_DISTRIBUTION_URL=https://services.gradle.org/distributions/gradle-2.2.1-all.zip
 
-RUN apt-get update && apt-get install -qqqy curl && curl -sL https://deb.nodesource.com/setup_14.x | bash -
-RUN apt-get update && apt-get install -qqqy openjdk-8-jdk wget unzip nodejs
+RUN apt-get update && apt-get install nodejs curl -y && apt-get clean
 
-RUN useradd -m -d /home/ubuntu -s /bin/bash -u 1000 user
-RUN mkdir /project && chown 1000:1000 /project
-USER user
-WORKDIR /home/ubuntu
+RUN curl https://install.meteor.com/ | sh
 
-# This was copied from: https://hub.docker.com/r/chibatching/docker-android-sdk/dockerfile
-# <COPY>
-RUN mkdir tools && wget -nv https://dl.google.com/android/repository/sdk-tools-linux-4333796.zip -O tools.zip && \
-    unzip -q tools.zip -d tools && \
-    rm tools.zip
-
-ENV ANDROID_HOME /home/ubuntu/tools
-ENV PATH ${ANDROID_HOME}/tools:$ANDROID_HOME/platform-tools:$PATH:${ANDROID_HOME}/tools/bin
-
-RUN mkdir $ANDROID_HOME/licenses && \
-    echo 8933bad161af4178b1185d1a37fbf41ea5269c55 > $ANDROID_HOME/licenses/android-sdk-license && \
-    echo d56f5187479451eabf01fb78af6dfcb131a6481e >> $ANDROID_HOME/licenses/android-sdk-license && \
-    echo 24333f8a63b6825ea9c5514f83c2829b004d1fee >> $ANDROID_HOME/licenses/android-sdk-license && \
-    echo 84831b9409646a918e30573bab4c9c91346d8abd > $ANDROID_HOME/licenses/android-sdk-preview-license
-# </COPY>
-
-# FIXME: there might be unnecessary lines here - if the project still builds APKs after removing them,
-# let's get rid of the lines
-RUN sdkmanager \
+# FIXME: probably not everything listed here is needed.
+RUN /opt/android-sdk/cmdline-tools/tools/bin/sdkmanager \
     "build-tools;28.0.3"\
     "emulator"\
     "extras;android;m2repository"\
@@ -53,29 +21,37 @@ RUN sdkmanager \
     "platforms;android-23"\
     "platforms;android-28"\
     "sources;android-23" \
-    2>&1 | tail -c 4096  # tail is here because sdkmanager doesn't have --quiet option and spams A LOT
+    >/dev/null
 
-# https://stackoverflow.com/questions/42645285/cordova-android-sdk-not-found-make-sure-that-it-is-installed-if-it-is-not-at
-#
-# We need this fix in order to be able to build under Cordova. Otherwise it doesn't detect Android SDK. 
-ENV TOOLS_VERSION=r22.6.2
-RUN cd $ANDROID_HOME && \
+# workaround: new versions of Android tools don't build our setup
+RUN cd /opt/android-sdk && \
     rm -rf tools && \
-    curl -O https://dl.google.com/android/repository/tools_${TOOLS_VERSION}-linux.zip && \
-    unzip -qq tools_${TOOLS_VERSION}-linux.zip && \
-    rm tools_${TOOLS_VERSION}-linux.zip && \
+    curl -O https://dl.google.com/android/repository/tools_r25.2.3-linux.zip && \
+    unzip -qq tools_r25.2.3-linux.zip && \
+    rm tools_r25.2.3-linux.zip && \
     chown 1000:1000 tools -R
 
-# This solves the following: https://issuetracker.google.com/issues/116182838
-RUN sed -e 's/init>/init\&gt;/g' -i $ANDROID_HOME/platform-tools/api/api-versions.xml && rm $ANDROID_HOME/platform-tools/api/annotations.zip
+USER 1000
+RUN mkdir /tmp/project
 
-# Install Meteor as root, so that it's in $PATH
-USER root
-RUN curl 'https://install.meteor.com/?release=1.9' | sh
-USER user
+ADD --chown=1000:1000 client /tmp/project/client
+ADD --chown=1000:1000 cordova-build-override /tmp/project/cordova-build-override
+ADD --chown=1000:1000 lib /tmp/project/lib
+ADD --chown=1000:1000 mobile-config.js /tmp/project/mobile-config.js
+ADD --chown=1000:1000 public /tmp/project/public
+ADD --chown=1000:1000 scripts /tmp/project/scripts
+ADD --chown=1000:1000 server /tmp/project/server
+ADD --chown=1000:1000 .meteor /tmp/project/.meteor
 
-# Without this line, we're getting the following error:
-# Exception in thread "main" java.lang.RuntimeException: java.io.IOException: Server returned HTTP response code: 403 for URL: http://services.gradle.org/distributions/gradle-2.2.1-all.zip
-ENV CORDOVA_ANDROID_GRADLE_DISTRIBUTION_URL=https://services.gradle.org/distributions/gradle-2.2.1-all.zip
+WORKDIR /tmp/project
+ENV HOME=/tmp
 
-WORKDIR /project
+ENV ANDROID_HOME=/opt/android-sdk
+ENV PATH=$PATH:/opt/android-sdk/tools/
+
+RUN meteor build .build --server localhost:3785 --allow-superuser
+RUN cp -R cordova-build-override/* .build/android/project/assets/.
+RUN cd .build/android/project/cordova ; ./build --release
+
+# Restore Ubuntu's entrypoint that was changed by the base image:
+ENTRYPOINT /bin/bash
